@@ -49,11 +49,16 @@ def predict():
 
         prediction, overlay = process_image(file_path)
 
-        # Save overlay image
-        overlay_path = os.path.join(app.config["UPLOAD_FOLDER"], "overlay_" + filename)
-        cv2.imwrite(overlay_path, overlay)
+        # Encode overlay image to return it as a response
+        _, buffer = cv2.imencode(".png", overlay)
+        overlay_encoded = buffer.tobytes()
 
-        return jsonify({"prediction": prediction, "overlay_path": overlay_path}), 200
+        return (
+            jsonify(
+                {"prediction": prediction, "overlay": overlay_encoded.decode("latin1")}
+            ),
+            200,
+        )
 
     return jsonify({"error": "File type not allowed"}), 400
 
