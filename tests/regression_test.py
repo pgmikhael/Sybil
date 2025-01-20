@@ -403,12 +403,14 @@ class TestPredictionRegression(unittest.TestCase):
         if not os.path.exists(compare_calibrator_path) and compare_calibrator_path == default_cal_dict_path:
             test_model = Sybil("sybil_ensemble")
 
-        raw_calibrator_dict = json.load(open(compare_calibrator_path, "r"))
+        with open(compare_calibrator_path, "r") as f:
+            raw_calibrator_dict = json.load(f)
         new_calibrator_dict = {}
         for key, val in raw_calibrator_dict.items():
             new_calibrator_dict[key] = sybil.models.calibrator.SimpleClassifierGroup.from_json(val)
 
-        baseline_preds = json.load(open(baseline_path, "r"))
+        with open(baseline_path, "r") as f:
+            baseline_preds = json.load(f)
         test_probs = np.array(baseline_preds["x"]).reshape(-1, 1)
         year_keys = [key for key in baseline_preds.keys() if key.startswith("Year")]
         for year_key in year_keys:

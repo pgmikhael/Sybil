@@ -1,0 +1,10 @@
+# Requirements file
+setuptools
+setuptools_scm
+wheel
+build
+pytest
+pytest-cov
+flake8
+mypy
+black
