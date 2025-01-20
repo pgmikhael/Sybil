@@ -3,6 +3,11 @@
 __doc__ = """
 Use Sybil to run inference on a single exam.
 """
+import os
+import sys
+
+__dir__ = os.path.dirname(__file__)
+sys.path.append(os.path.join(__dir__, "../"))
 
 import argparse
 import json
@@ -11,9 +16,12 @@ import pickle
 import typing
 from typing import Literal
 
-import sybil.utils.logging_utils
-import sybil.datasets.utils
-from sybil import Serie, Sybil, visualize_attentions, __version__
+from sybil.utils import logging_utils
+from sybil.datasets import utils
+from sybil.serie import Serie
+from sybil.model import Sybil
+from sybil.utils.visualization import visualize_attentions
+from sybil import __version__
 
 
 def _get_parser():
@@ -24,7 +32,7 @@ def _get_parser():
         "image_dir",
         default=None,
         help="Path to directory containing DICOM/PNG files (from a single exam) to run inference on. "
-             "Every file in the directory will be included.",
+        "Every file in the directory will be included.",
     )
 
     parser.add_argument(
@@ -65,13 +73,18 @@ def _get_parser():
         help="Name of the model to use for prediction. Default: sybil_ensemble",
     )
 
-    parser.add_argument("-l", "--log", "--loglevel", "--log-level",
-                        default="INFO", dest="loglevel")
+    parser.add_argument(
+        "-l", "--log", "--loglevel", "--log-level", default="INFO", dest="loglevel"
+    )
 
-    parser.add_argument('--threads', type=int, default=0,
-                        help="Number of threads to use for PyTorch inference. "
-                             "Default is 0 (use all available cores)."
-                             "Set to a negative number to use Pytorch default.")
+    parser.add_argument(
+        "--threads",
+        type=int,
+        default=0,
+        help="Number of threads to use for PyTorch inference. "
+        "Default is 0 (use all available cores)."
+        "Set to a negative number to use Pytorch default.",
+    )
 
     parser.add_argument("-v", "--version", action="version", version=__version__)
 
@@ -87,12 +100,14 @@ def predict(
     file_type: Literal["auto", "dicom", "png"] = "auto",
     threads: int = 0,
 ):
-    logger = sybil.utils.logging_utils.get_logger()
+    logger = logging_utils.get_logger()
 
     return_attentions |= write_attention_images
 
     input_files = os.listdir(image_dir)
-    input_files = [os.path.join(image_dir, x) for x in input_files if not x.startswith(".")]
+    input_files = [
+        os.path.join(image_dir, x) for x in input_files if not x.startswith(".")
+    ]
     input_files = [x for x in input_files if os.path.isfile(x)]
 
     voxel_spacing = None
@@ -107,14 +122,16 @@ def predict(
         file_type = "dicom"
         if extension.lower() in {".png", "png"}:
             file_type = "png"
-            voxel_spacing = sybil.datasets.utils.VOXEL_SPACING
+            voxel_spacing = utils.VOXEL_SPACING
             logger.debug(f"Using default voxel spacing: {voxel_spacing}")
     assert file_type in {"dicom", "png"}
     file_type = typing.cast(Literal["dicom", "png"], file_type)
 
     num_files = len(input_files)
 
-    logger.debug(f"Beginning prediction using {num_files} {file_type} files from {image_dir}")
+    logger.debug(
+        f"Beginning prediction using {num_files} {file_type} files from {image_dir}"
+    )
 
     # Load a trained model
     model = Sybil(model_name)
@@ -122,7 +139,9 @@ def predict(
     # Get risk scores
     serie = Serie(input_files, voxel_spacing=voxel_spacing, file_type=file_type)
     series = [serie]
-    prediction = model.predict(series, return_attentions=return_attentions, threads=threads)
+    prediction = model.predict(
+        series, return_attentions=return_attentions, threads=threads
+    )
     prediction_scores = prediction.scores[0]
 
     logger.debug(f"Prediction finished. Results:\n{prediction_scores}")
@@ -150,21 +169,40 @@ def predict(
 
 
 def main():
-    args = _get_parser().parse_args()
-    sybil.utils.logging_utils.configure_logger(args.loglevel)
+    # args = _get_parser().parse_args()
+    # logging_utils.configure_logger(args.loglevel)
 
-    os.makedirs(args.output_dir, exist_ok=True)
+    # os.makedirs(args.output_dir, exist_ok=True)
 
+    # pred_dict, series_with_attention = predict(
+    #     args.image_dir,
+    #     args.output_dir,
+    #     args.model_name,
+    #     args.return_attentions,
+    #     args.write_attention_images,
+    #     file_type=args.file_type,
+    #     threads=args.threads,
+    # )
+
+    # print(json.dumps(pred_dict, indent=2))
+    
+    print("=== Predict main ===")
+    
+    image_dir = "D:/Work/Clients/Job/Sybil/custom/Chung_20241014"
+    output_dir = "./visualizations"
+    model_name = "sybil_ensemble"
+    return_attentions = True
+    write_attention_images = True
+
+    os.makedirs(output_dir, exist_ok=True)
+    print("predict")
     pred_dict, series_with_attention = predict(
-        args.image_dir,
-        args.output_dir,
-        args.model_name,
-        args.return_attentions,
-        args.write_attention_images,
-        file_type=args.file_type,
-        threads=args.threads,
+        image_dir,
+        output_dir,
+        model_name,
+        return_attentions,
+        write_attention_images,
     )
-
     print(json.dumps(pred_dict, indent=2))
 
 
